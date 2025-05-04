@@ -1,0 +1,81 @@
+---
+- name: Create an AMI for the Deploy Server
+  hosts: localhost
+  var:
+    imageid: ami-07b0c09aab6e66ee9
+  tasks:
+    - name: Gather information about any instance with a tag key Name and value Example
+      amazon.aws.ec2_instance_info:
+        filters:
+          "tag:Name": deployServer2
+      register: ec2_info
+    - debug: { var: ec2_info }
+    - name: Get the info of the VPC for the instance
+      amazon.aws.ec2_vpc_net_info:
+        filters:
+          "tag:Name": VPCLCL42837_FIRST
+      register: vpc_info
+    - name: Create a Security Group
+      amazon.aws.ec2_group:
+        name: VPCLCL42837_FIRST_MYSQL_SSH_HTTP
+        description: MYSQL access
+        vpc_id: "{{ vpc_info.vpcs[0].id}}"
+        rules:
+          - proto: tcp
+            ports:
+              - 3306
+              - 80
+              - 22
+            cidr_ip: 0.0.0.0/0
+      register: sg_info
+    - name: Create an ec2 launch template
+      amazon.aws.ec2_launch_template:
+        version_description: Build a PHP application
+        name: "Deploy-scale-config2"
+        security_group_ids: "{{ sg_info.group_id}}"
+        image_id: "{{ imagedid }}"
+        key_name: toche-key
+        instance_type: t2.micro
+      register: temp_info
+    - debug: { var: temp_info }
+    - name: Get the info of the VPC Subnet for the instance in AZ1
+      amazon.aws.ec2_vpc_subnet_info:
+        filters:
+          "tag:Name": DEPLOY00001
+          vpc-id: "{{ ec2_info.instances[0].vpc_id}}"
+      register: subnet_info1
+    - name: Get the info of the VPC Subnet for the instance in AZ2
+      amazon.aws.ec2_vpc_subnet_info:
+        filters:
+          "tag:Name": DEPLOY00011
+          vpc-id: "{{ ec2_info.instances[0].vpc_id}}"
+      register: subnet_info11
+    #    - name: Gather information about a particular ELB
+    #      community.aws.ec2_elb_info:
+    #        names: VPCLCL42837-FIRST-ALB
+    #      register: elb_info
+    #    - debug: { var: elb_info }
+    - name: Create a target group with a default health check
+      community.aws.elb_target_group:
+        name: VPCLCL42837-FIRST-ALB-TG
+        protocol: http
+        port: 8080
+        vpc_id: "{{ ec2_info.instances[0].vpc_id}}"
+        state: present
+      register: tg_info
+    - debug: { var: tg_info}
+    - name: Example autoscaling group creation with a launch template
+      amazon.aws.autoscaling_group:
+        name: Deploy-scale-config-grp
+        target_group_arns: "{{ tg_info.target_group_arn }}"
+        availability_zones: [ 'us-west-2a', 'us-west-2b' ]
+        launch_template:
+          version: '1'
+          launch_template_name: "{{ temp_info.versions[0].launch_template_name }}"
+          launch_template_id: "{{ temp_info.versions[0].launch_template_id }}"
+        min_size: 2
+        max_size: 3
+        desired_capacity: 2
+        vpc_zone_identifier: [ "{{ subnet_info1.subnets[0].id }}", "{{ subnet_info11.subnets[0].id }}" ]
+        tags:
+          - Name: Deploy-Server-Scale

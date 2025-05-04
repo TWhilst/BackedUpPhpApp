@@ -1,0 +1,26 @@
+---
+- name: Create a Subnet specially for Database
+  hosts: localhost
+  tasks:
+    - name: Get the info of the VPC for the instance
+      amazon.aws.ec2_vpc_net_info:
+        filters:
+          "tag:Name": VPCLCL42837_FIRST
+      register: vpc_info
+    - name: VPC Private Subnet in AZ1
+      amazon.aws.ec2_vpc_subnet:
+        cidr: 10.0.1.0/24
+        region: us-west-2
+        az: us-west-2a
+        vpc_id: "{{ vpc_info.vpcs[0].id}}"
+        tags:
+          Name: DEPLOY00001
+      register: subnet_info11
+    - name: VPC Public Subnet in AZ2
+      amazon.aws.ec2_vpc_subnet:
+        cidr: 10.0.2.0/24
+        region: us-west-2
+        az: us-west-2b
+        vpc_id: "{{ vpc_info.vpcs[0].id}}"
+        tags:
+          Name: BUILD00011
