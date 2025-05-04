@@ -35,7 +35,6 @@
         state: present
         name: VPCLCL42837_FIRST_DB_SUB
         description: Subnets for the Php Database
-        vpc_id: "{{ vpc_info.vpcs[0].id}}"
         subnets:
           - "{{ subnet_info1.subnets[0].id}}"
           - "{{ subnet_info11.subnets[0].id}}"
