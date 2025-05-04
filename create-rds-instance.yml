@@ -55,5 +55,6 @@
         vpc_security_group_ids: "{{ sg_info.group_id}}"
         db_subnet_group_name: "{{ db_info.subnet_group.db_subnet_group_name }}"
         instance_type: db.t3.micro
+        allocated_storage: 20
         master_user_password: "{{ password }}"
         master_username: "{{ dbUsername }}"
