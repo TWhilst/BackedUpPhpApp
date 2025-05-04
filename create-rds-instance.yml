@@ -29,6 +29,18 @@
             ports:
               - 3306
             cidr_ip: 0.0.0.0/24
+    - name: Create a Security Group
+      amazon.aws.ec2_group:
+        name: VPCLCL42837_FIRST_MYSQL_SSH_HTTP
+        description: MYSQL access
+        vpc_id: "{{ vpc_info.vpcs[0].id}}"
+        rules:
+          - proto: tcp
+            ports:
+              - 3306
+              - 80
+              - 22
+            cidr_ip: 0.0.0.0/0
       register: sg_info
     - name: Create a Database Subnet Group
       amazon.aws.rds_subnet_group:
